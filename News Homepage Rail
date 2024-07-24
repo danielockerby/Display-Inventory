@@ -1,0 +1,38 @@
+SELECT
+    main.dt,
+    main.group_type,
+    main.at_mid,
+    agg.total_impressions
+FROM (
+    SELECT DISTINCT
+        dt,
+        group_type,
+        REGEXP_SUBSTR(item_link, '^.*[?&]at_mid=([a-zA-Z0-9]*)[^&at_]?', 1, 1, 'e') AS at_mid
+    FROM "redshiftdb"."s3_audience"."audience_activity"
+    WHERE
+        destination = 'PS_NEWS'
+        AND dt BETWEEN '20240610' AND '20240610'
+        AND item_link LIKE '%display_ad%'
+        AND event_action = 'view'
+        AND group_type != 'footer promos'
+        AND group_type != 'rich text'
+        AND content_type = 'index-home'
+) AS main
+JOIN (
+    SELECT
+        REGEXP_SUBSTR(item_link, '^.*[?&]at_mid=([a-zA-Z0-9]*)[^&at_]?', 1, 1, 'e') AS at_mid,
+        group_type,
+        COUNT(audience_id) AS total_impressions
+    FROM "redshiftdb"."s3_audience"."audience_activity"
+    WHERE
+        destination = 'PS_NEWS'
+        AND dt BETWEEN '20240610' AND '20240610'
+        AND item_link LIKE '%display_ad%'
+        AND event_action = 'view'
+        AND group_type != 'footer promos'
+        AND group_type != 'rich text'
+        AND content_type = 'index-home'
+    GROUP BY at_mid, group_type
+) AS agg
+ON main.at_mid = agg.at_mid AND main.group_type = agg.group_type
+ORDER BY main.at_mid, main.group_type;
