@@ -1,9 +1,38 @@
 SELECT
-    main.dt,
-    main.group_type,
-    main.at_mid,
-    SUM(agg.total_impressions) AS impressions,
-    SUM(agg.total_clicks) AS clicks
+    main.dt AS date,  -- Select the date column without formatting
+    main.at_mid AS mid_marketing_id,  -- Select the marketing ID
+    SUM(agg.total_impressions) AS impressions,  -- Sum the impressions column
+    SUM(agg.total_clicks) AS clicks,  -- Sum the clicks column
+    acc.ac_campaign_name AS campaign_name,  -- Select the campaign name
+    acc.ac_link_type AS link_type,  -- Select the link type
+    acc.ac_url AS URL,  -- Select the URL
+    acc.ac_medium AS medium,  -- Select the medium
+    acc.ac_campaign_type AS campaign_type,  -- Select the campaign type
+    'news_homepage_rail' AS origin,  -- Set a fixed value for the origin column
+    acc.ac_link_id AS link_id,  -- Select the link ID
+    CASE
+        WHEN acc.ac_audience_id = 'all_map_aud' THEN 'All_Opportunity_Audiences'
+        WHEN acc.ac_audience_id = 'SO' THEN 'Starting_Out'
+        WHEN acc.ac_audience_id = 'SS' THEN 'Secure_Suburban'
+        WHEN acc.ac_audience_id = 'MP' THEN 'Metropolitan_Professionals'
+        WHEN acc.ac_audience_id = 'CR' THEN 'Comfortable_Retirees'
+        WHEN acc.ac_audience_id = 'WF' THEN 'Working_Families'
+        WHEN acc.ac_audience_id = 'TV' THEN 'Traditional_Values'
+        WHEN acc.ac_audience_id = 'UE' THEN 'Under_18s'
+        WHEN acc.ac_audience_id = 'abc' THEN 'ABC_for_you_page'
+        WHEN acc.ac_audience_id = 'def' THEN 'DEF_for_you_page'
+        WHEN acc.ac_audience_id = 'default' THEN 'DEFAULT_for_you_page'
+        WHEN acc.ac_audience_id = 'sounds_onboarding' THEN 'Sounds_Onboarding_18-44'
+        ELSE acc.ac_audience_id
+    END AS map_segment,  -- Replace abbreviations with full values in the map_segment column
+    acc.ac_product AS product_promoted,  -- Select the product promoted
+    acc.ac_brand AS brand_id,  -- Select the brand ID
+    acc.ac_ptr_name AS partner,  -- Select the partner name
+    acc.ac_ptr_type AS partner_type,  -- Select the partner type
+    acc.ac_format AS content_format,  -- Select the content format
+    acc.ac_objective AS objective,  -- Select the objective
+    acc.ac_creation_time AS creation_date,  -- Select the creation date
+    acc.ac_last_update AS last_updated  -- Select the last updated date
 FROM (
     SELECT DISTINCT
         dt,
@@ -18,7 +47,7 @@ FROM (
         AND group_type != 'footer promos'
         AND group_type != 'rich text'
         AND content_type = 'index-home'
-) AS main
+) AS main  -- Subquery to select distinct dates, group types, and marketing IDs
 JOIN (
     SELECT
         dt,
@@ -36,7 +65,12 @@ JOIN (
         AND group_type != 'rich text'
         AND content_type = 'index-home'
     GROUP BY dt, at_mid, group_type
-) AS agg
-ON main.dt = agg.dt AND main.at_mid = agg.at_mid AND main.group_type = agg.group_type
-GROUP BY main.dt, main.group_type, main.at_mid
-ORDER BY main.at_mid, main.group_type;
+) AS agg  -- Subquery to aggregate impressions and clicks by date, marketing ID, and group type
+ON main.dt = agg.dt AND main.at_mid = agg.at_mid AND main.group_type = agg.group_type  -- Join the main and agg subqueries on date, marketing ID, and group type
+JOIN "central_insights"."accutics_campaigns" AS acc
+ON main.at_mid = acc.ac_mid  -- Join with the accutics_campaigns table on marketing ID
+GROUP BY main.dt, main.group_type, main.at_mid, acc.ac_campaign_name, acc.ac_link_type, acc.ac_url,
+         acc.ac_medium, acc.ac_campaign_type, acc.ac_link_id, acc.ac_audience_id, acc.ac_product,
+         acc.ac_brand, acc.ac_ptr_name, acc.ac_ptr_type, acc.ac_format, acc.ac_objective,
+         acc.ac_creation_time, acc.ac_last_update  -- Group by all selected columns
+ORDER BY main.at_mid, main.group_type, main.dt;  -- Order by marketing ID, group type, and date
