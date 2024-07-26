@@ -1,0 +1,97 @@
+WITH impressions AS (
+    SELECT dt,
+           REGEXP_SUBSTR(item_link, '^.*[?&]at_mid=([a-zA-Z0-9]*)[^&at_]?', 1, 1, 'e') AS mid_marketing_id,
+           COUNT(audience_id) AS impressions
+    FROM redshiftdb.s3_audience.audience_activity
+    WHERE event_action = 'view'
+      AND item_link LIKE '%display_ad%'
+      AND group_type = 'footer promos'
+      AND dt = '20240501'
+      AND destination IN (
+        'PS_NEWS', 'PS_SPORT', 'PS_HOMEPAGE', 'PS_IPLAYER', 'PS_SEARCH',
+        'PS_WEATHER', 'PS_PROGRAMMES', 'PS_SOUNDS', 'PS_BITESIZE', 'PS_FOOD',
+        'PS_BBC_CORPORATE', 'PS_CBEEBIES', 'PS_CBBC', 'PS_NEWSROUND', 'PS_TEACH',
+        'PS_PAN_BBC', 'PS_ACCOUNT', 'PS_BBC_ARCHIVE', 'PS_OWN_IT', 'PS_TASTER',
+        'PS_BBC_THREE', 'PS_GAMES', 'PS_IDEAS', 'PS_MUSIC', 'PS_BLOGS', 'PS_NEWS_LANGUAGES'
+      )
+    GROUP BY dt, mid_marketing_id
+),
+clicks AS (
+    SELECT dt,
+           REGEXP_SUBSTR(item_link, '^.*[?&]at_mid=([a-zA-Z0-9]*)[^&at_]?', 1, 1, 'e') AS mid_marketing_id,
+           COUNT(audience_id) AS clicks
+    FROM redshiftdb.s3_audience.audience_activity
+    WHERE event_action = 'select'
+      AND item_link LIKE '%display_ad%'
+      AND group_type = 'footer promos'
+      AND dt = '20240501'
+      AND destination IN (
+        'PS_NEWS', 'PS_SPORT', 'PS_HOMEPAGE', 'PS_IPLAYER', 'PS_SEARCH',
+        'PS_WEATHER', 'PS_PROGRAMMES', 'PS_SOUNDS', 'PS_BITESIZE', 'PS_FOOD',
+        'PS_BBC_CORPORATE', 'PS_CBEEBIES', 'PS_CBBC', 'PS_NEWSROUND', 'PS_TEACH',
+        'PS_PAN_BBC', 'PS_ACCOUNT', 'PS_BBC_ARCHIVE', 'PS_OWN_IT', 'PS_TASTER',
+        'PS_BBC_THREE', 'PS_GAMES', 'PS_IDEAS', 'PS_MUSIC', 'PS_BLOGS', 'PS_NEWS_LANGUAGES'
+      )
+    GROUP BY dt, mid_marketing_id
+),
+interactions AS (
+    SELECT dt,
+           src_mid AS mid_marketing_id,
+           SUM(number_av_interactions) AS av_plays,
+           ROUND(SUM(playback_time) / 3600.0) AS av_time_spent
+    FROM redshiftdb.s3_audience.audience_activity
+    WHERE number_av_interactions IS NOT NULL
+      AND dt = '20240501'
+    GROUP BY dt, src_mid
+)
+SELECT i.dt AS date,
+       i.mid_marketing_id,
+       i.impressions,
+       c.clicks,
+       CASE
+           WHEN i.impressions = 0 THEN 0
+           ELSE ROUND((c.clicks * 100.0) / i.impressions, 2)
+       END AS CTR,
+       COALESCE(inter.av_plays, 0) AS av_plays,
+       COALESCE(inter.av_time_spent, 0) AS av_time_spent,
+       CASE
+           WHEN ac.ac_audience_id = 'all_map_aud' THEN 'all_opportunity_audiences'
+           WHEN ac.ac_audience_id = 'SO' THEN 'starting_out'
+           WHEN ac.ac_audience_id = 'SS' THEN 'secure_suburban'
+           WHEN ac.ac_audience_id = 'MP' THEN 'metropolitan_professionals'
+           WHEN ac.ac_audience_id = 'CR' THEN 'comfortable_retirees'
+           WHEN ac.ac_audience_id = 'WF' THEN 'working_families'
+           WHEN ac.ac_audience_id = 'TV' THEN 'traditional_values'
+           WHEN ac.ac_audience_id = 'UE' THEN 'under_18s'
+           WHEN ac.ac_audience_id = 'abc' THEN 'abc_for_you_page'
+           WHEN ac.ac_audience_id = 'def' THEN 'def_for_you_page'
+           WHEN ac.ac_audience_id = 'default' THEN 'default_for_you_page'
+           WHEN ac.ac_audience_id = 'sounds_onboarding' THEN 'sounds_onboarding_18-44'
+           ELSE ac.ac_audience_id
+       END AS audience_map_segment,
+       CASE
+           WHEN ac.ac_nation = 'NIR' THEN 'northern_ireland'
+           WHEN ac.ac_nation = 'SCT' THEN 'scotland'
+           WHEN ac.ac_nation = 'WLS' THEN 'wales'
+           ELSE ac.ac_nation
+       END AS nation,
+       ac.ac_campaign_name AS campaign_name,
+       ac.ac_link_type AS link_type,
+       ac.ac_url AS url,
+       ac.ac_medium AS media_source,
+       ac.ac_campaign_type AS campaign_type,
+       ac.ac_link_origin AS display_origin,
+       ac.ac_product AS product_promoted,
+       ac.ac_brand AS brand_id,
+       ac.ac_ptr_name AS partner_name,
+       ac.ac_ptr_type AS partner_type,
+       ac.ac_format AS format,
+       ac.ac_objective AS objective,
+       ac.ac_bbc_team AS team,
+       ac.ac_creation_time AS creation_time,
+       ac.ac_last_update AS last_updated
+FROM impressions i
+LEFT JOIN clicks c ON i.dt = c.dt AND i.mid_marketing_id = c.mid_marketing_id
+LEFT JOIN interactions inter ON i.dt = inter.dt AND i.mid_marketing_id = inter.mid_marketing_id
+LEFT JOIN central_insights.accutics_campaigns ac ON i.mid_marketing_id = ac.ac_mid
+ORDER BY i.dt ASC, i.impressions DESC;
