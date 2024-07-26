@@ -1,0 +1,22 @@
+SELECT dt,
+       REGEXP_SUBSTR(item_link, '^.*[?&]at_mid=([a-zA-Z0-9]*)[^&at_]?', 1, 1, 'e') AS mid_marketing_id,
+       COUNT(CASE WHEN event_action = 'view' THEN audience_id END) AS impressions,
+       COUNT(CASE WHEN event_action = 'select' THEN audience_id END) AS clicks,
+       CASE
+           WHEN COUNT(CASE WHEN event_action = 'view' THEN audience_id END) = 0 THEN 0
+           ELSE ROUND(
+               (COUNT(CASE WHEN event_action = 'select' THEN audience_id END) * 100.0) /
+               COUNT(CASE WHEN event_action = 'view' THEN audience_id END), 2
+           )
+       END AS CTR
+FROM redshiftdb.s3_audience.audience_activity
+WHERE item_link LIKE '%display_ad%'
+  AND dt BETWEEN '20240501' AND '20240501'
+  AND destination IN (
+    'PS_NEWS', 'PS_SPORT', 'PS_HOMEPAGE', 'PS_IPLAYER', 'PS_SEARCH',
+    'PS_WEATHER', 'PS_PROGRAMMES', 'PS_SOUNDS', 'PS_BITESIZE', 'PS_FOOD',
+    'PS_BBC_CORPORATE', 'PS_CBEEBIES', 'PS_CBBC', 'PS_NEWSROUND', 'PS_TEACH',
+    'PS_PAN_BBC', 'PS_ACCOUNT', 'PS_BBC_ARCHIVE', 'PS_OWN_IT', 'PS_TASTER',
+    'PS_BBC_THREE', 'PS_GAMES', 'PS_IDEAS', 'PS_MUSIC', 'PS_BLOGS', 'PS_NEWS_LANGUAGES'
+  )
+GROUP BY dt, mid_marketing_id;
