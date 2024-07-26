@@ -9,13 +9,7 @@ WITH impressions AS (
       AND group_type != 'rich text'
       AND content_type = 'index-home'
       AND dt = '20240501'
-      AND destination IN (
-        'PS_NEWS', 'PS_SPORT', 'PS_HOMEPAGE', 'PS_IPLAYER', 'PS_SEARCH',
-        'PS_WEATHER', 'PS_PROGRAMMES', 'PS_SOUNDS', 'PS_BITESIZE', 'PS_FOOD',
-        'PS_BBC_CORPORATE', 'PS_CBEEBIES', 'PS_CBBC', 'PS_NEWSROUND', 'PS_TEACH',
-        'PS_PAN_BBC', 'PS_ACCOUNT', 'PS_BBC_ARCHIVE', 'PS_OWN_IT', 'PS_TASTER',
-        'PS_BBC_THREE', 'PS_GAMES', 'PS_IDEAS', 'PS_MUSIC', 'PS_BLOGS', 'PS_NEWS_LANGUAGES'
-      )
+      AND destination = 'PS_NEWS'
     GROUP BY dt, mid_marketing_id
 ),
 clicks AS (
@@ -29,13 +23,7 @@ clicks AS (
       AND group_type != 'rich text'
       AND content_type = 'index-home'
       AND dt = '20240501'
-      AND destination IN (
-        'PS_NEWS', 'PS_SPORT', 'PS_HOMEPAGE', 'PS_IPLAYER', 'PS_SEARCH',
-        'PS_WEATHER', 'PS_PROGRAMMES', 'PS_SOUNDS', 'PS_BITESIZE', 'PS_FOOD',
-        'PS_BBC_CORPORATE', 'PS_CBEEBIES', 'PS_CBBC', 'PS_NEWSROUND', 'PS_TEACH',
-        'PS_PAN_BBC', 'PS_ACCOUNT', 'PS_BBC_ARCHIVE', 'PS_OWN_IT', 'PS_TASTER',
-        'PS_BBC_THREE', 'PS_GAMES', 'PS_IDEAS', 'PS_MUSIC', 'PS_BLOGS', 'PS_NEWS_LANGUAGES'
-      )
+      AND destination = 'PS_NEWS'
     GROUP BY dt, mid_marketing_id
 ),
 interactions AS (
